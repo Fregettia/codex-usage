@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Codex Usage — Local analytics</title><meta name="description" content="Private, local Codex usage analytics. Summary, activity, token breakdown and prompt caching."><link rel="icon" href="/favicon.svg"><link rel="stylesheet" href="/style.css"><script src="/app.js" defer></script></head>
+<body>
+<header class="topbar"><div class="brand"><span class="brand-icon">⌘</span> Codex <span class="brand-light">/ Usage</span></div><span class="private"><span class="status-dot"></span> Local only <span class="private-note">· 日志不离开本机</span></span></header>
+<main>
+  <div class="page-heading"><div><div class="eyebrow">YOUR WORK, IN NUMBERS</div><h1 id="page-title">Usage summary</h1><p id="page-description">了解你的 Codex 使用习惯与模型分布。</p></div><div class="controls"><label class="sr-only" for="timezone">Timezone</label><select id="timezone"><option value="Asia/Singapore">GMT+8 · Singapore</option><option value="UTC">UTC</option><option value="America/Los_Angeles">Los Angeles</option><option value="Europe/London">London</option></select><div class="segmented" id="ranges" aria-label="Time range"><button data-range="7d">7d</button><button data-range="30d">30d</button><button data-range="mtd" class="selected">MTD</button><button data-range="all">All</button></div><button class="icon-button" id="refresh" title="重新扫描新增日志" aria-label="刷新日志">↻</button></div></div>
+  <nav class="tabs" aria-label="Pages"><a href="/summary" data-page="summary" class="active">Summary</a><a href="/activity" data-page="activity">Activity</a><a href="/logs" data-page="logs">Logs</a><span id="date-label"></span></nav>
+  <div id="notice" role="status" aria-live="polite" class="notice">正在读取本地日志，首次扫描可能需要几秒钟…</div>
+  <div id="content" aria-busy="true"></div>
+  <footer><span>⌘ Codex Usage <span class="footer-divider">/</span> Private by design</span><span id="scan-label">Local analytics</span></footer>
+</main>
+<div id="tooltip" role="tooltip" hidden></div>
+</body></html>

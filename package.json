@@ -1,0 +1,19 @@
+{
+  "name": "codex-usage-local",
+  "version": "1.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@nivo/bar": "^0.99.0",
+    "@nivo/line": "^0.99.0",
+    "@nivo/pie": "^0.99.0",
+    "@nivo/calendar": "^0.99.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.0"
+  }
+}
