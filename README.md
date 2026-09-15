@@ -16,12 +16,7 @@ python3 server.py
 
 打开 <http://127.0.0.1:8765>。按 `Ctrl+C` 停止服务。
 
-当前交付目录：
 
-```sh
-cd /Users/lewis/Documents/Codex/2026-09-13/referenced-chatgpt-conversation-this-is-an/outputs/codex-usage
-python3 server.py
-```
 
 如果 8765 端口已经被占用（例如本次预览仍在运行），直接打开现有页面，或指定其他端口：
 
@@ -85,7 +80,6 @@ python3 server.py --sessions /absolute/path/to/sessions --cache /absolute/path/t
 
 Cache writes 视为未缓存输入中的子集；未配置写入单价时使用 input 单价。Reasoning 包含在 output 中，不额外计费。
 
-经用户确认，`gpt-reserve` 按 Luna 计价；`codex-auto-review` 在 2026-07-31 01:17:10（GMT+8）前按 5.4 Mini、之后按 Luna；`gpt-5.3-codex-spark` 按 [GPT-5.3-Codex 官方价格](https://developers.openai.com/api/docs/models/gpt-5.3-codex)（$1.75 / $0.175 / $14 每百万输入 / 缓存输入 / 输出 tokens）计价。auto-review 切换时间以[用户提供的公告链接](https://x.com/OpenAI/status/2082878180478910571)的发布时间为界。以上映射可在 `pricing.json` 修改。其他没有公开单价的模型不会被套用相似模型价格；请求与 token 仍显示，费用标为“未定价”。
 
 ## 增量扫描与隐私
 
