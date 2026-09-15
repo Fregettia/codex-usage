@@ -1,6 +1,8 @@
 # Codex Usage — 本地使用分析
 
-参考提供的 Summary / Activity 截图实现的浅色分析网站。读取真实的 `~/.codex/sessions/**/rollout-*.jsonl`，没有演示数据、云服务、远程字体、CDN、遥测或外部 API 调用。
+读取真实的 `~/.codex/sessions/**/rollout-*.jsonl`，没有演示数据、云服务、远程字体、CDN、遥测或外部 API 调用。
+
+![Summary](images/summary.png)
 
 ## 启动
 
