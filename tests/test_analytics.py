@@ -161,6 +161,33 @@ class AnalyticsTests(unittest.TestCase):
         self.assertEqual(next(m for m in report['models'] if m['id']=='gpt-5.4-mini')['requests'], 1)
         self.assertEqual(next(m for m in report['models'] if m['id']=='gpt-5.3-codex')['requests'], 1)
 
+    def test_report_cache_tracks_log_and_pricing_changes(self):
+        self.write([context(), token(usage(), usage())])
+        self.index.scan()
+        first = self.index.report('all', 'UTC', PRICING, now=NOW)
+        self.assertEqual(first['totals']['requests'], 1)
+        self.assertEqual(self.index.report('all', 'UTC', PRICING, now=NOW)['totals'], first['totals'])
+        changed_pricing = json.loads(json.dumps(PRICING))
+        changed_pricing['models']['gpt-5.6-luna']['output'] = 2.4
+        self.assertGreater(self.index.report('all', 'UTC', changed_pricing, now=NOW)['totals']['cost'],
+                           first['totals']['cost'])
+        self.write([token(usage(200, 160, 20, 8), usage(), '2026-09-12T17:00:00Z')], mode='a')
+        self.index.scan()
+        self.assertEqual(self.index.report('all', 'UTC', PRICING, now=NOW)['totals']['requests'], 2)
+
+    def test_historical_and_new_model_prices(self):
+        pricing = json.loads((Path(__file__).resolve().parents[1]/'pricing.json').read_text())
+        expected = {
+            'gpt-5': (1.25, .125, 10), 'gpt-5.1': (1.25, .125, 10),
+            'gpt-5.2': (1.75, .175, 14), 'gpt-5.3-codex': (1.75, .175, 14),
+            'gpt-6-sol': (2, .2, 10), 'gpt-6-luna': (.1, .01, .5),
+        }
+        for model, rates in expected.items():
+            with self.subTest(model=model):
+                actual = pricing['models'][model]
+                self.assertEqual((actual['input'], actual['cached'], actual['output']), rates)
+        self.assertEqual(price_for('gpt-5.0', '2026-09-01T00:00:00Z', pricing)[0], 'gpt-5')
+
 
 if __name__ == '__main__':
     unittest.main()

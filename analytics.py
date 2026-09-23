@@ -59,6 +59,7 @@ class Index:
           CREATE INDEX IF NOT EXISTS event_fingerprint ON events(fingerprint);
         ''')
         self.scan_info = {}
+        self.report_cache = {}
 
     @staticmethod
     def edge(f, offset):
@@ -67,7 +68,7 @@ class Index:
 
     def scan(self):
         started = time.monotonic()
-        seen, changed, read_bytes, errors = set(), 0, 0, []
+        seen, changed, removed, read_bytes, errors = set(), 0, 0, 0, []
         if not self.root.is_dir():
             raise FileNotFoundError('日志目录不存在：' + str(self.root))
         for path in sorted(self.root.rglob('rollout-*.jsonl')):
@@ -116,6 +117,9 @@ class Index:
                 if row['path'] not in seen:
                     self.db.execute('DELETE FROM events WHERE path=?', (row['path'],))
                     self.db.execute('DELETE FROM files WHERE path=?', (row['path'],))
+                    removed += 1
+        if changed or removed:
+            self.report_cache.clear()
         count = self.db.execute('SELECT COUNT(*) FROM events').fetchone()[0]
         unique = self.db.execute('SELECT COUNT(DISTINCT fingerprint) FROM events').fetchone()[0]
         self.scan_info = dict(files=len(seen), changed_files=changed, bytes_read=read_bytes,
@@ -216,6 +220,10 @@ class Index:
     def report(self, period, tz_name, pricing, now=None, model_filter=''):
         tz = ZoneInfo(tz_name)
         today = (now or datetime.now(timezone.utc)).astimezone(tz).date()
+        cache_key = (period, tz_name, today, model_filter,
+                     json.dumps(pricing, sort_keys=True))
+        if cache_key in self.report_cache:
+            return dict(self.report_cache[cache_key], scan=self.scan_info)
         daily, models = {}, set(pricing['featured'])
         query = 'SELECT ts,model,usage FROM events'
         if model_filter:
@@ -283,9 +291,13 @@ class Index:
             for u in daily.get(day, {}).values():
                 add(t, u)
             calendar.append(dict(date=day, **t))
-        return dict(range=period, timezone=tz_name, start=start.isoformat(), end=today.isoformat(),
+        result = dict(range=period, timezone=tz_name, start=start.isoformat(), end=today.isoformat(),
                     first_date=first, totals=totals, previous=previous if period != 'all' else None,
                     days=days, active_days=active, longest_streak=longest,
                     avg_day=totals['total_tokens']/days, avg_week=totals['total_tokens']/days*7,
                     models=[dict(id=m, **u) for m,u in sorted(by_model.items(), key=lambda x:-x[1]['total_tokens'])],
                     daily=trend, calendar=calendar, scan=self.scan_info, pricing=pricing)
+        if len(self.report_cache) >= 32:
+            self.report_cache.clear()
+        self.report_cache[cache_key] = result
+        return dict(result)

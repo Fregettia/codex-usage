@@ -36,7 +36,7 @@ python3 server.py --sessions /absolute/path/to/sessions --cache /absolute/path/t
 
 - **Summary**：总 tokens、基础单价 API 等效、请求数、缓存命中率，按模型份额、日均 / 周均、活跃天数、最长连续使用天数。
 - **Logs**：访问 `/logs` 逐条查看精确请求时间、模型、input / cached / uncached / output / reasoning / total tokens、cache hit 与 6 位小数的 API 等效花费。支持模型筛选、25 / 50 / 100 条分页；点击请求时间展开费用拆分、来源日志文件名、字节位置和事件 ID。上方趋势图与时间、模型筛选一致。
-- **Activity**：按日、按模型堆叠图，Tokens / Spend / Requests 切换，花费趋势、请求量、token breakdown、prompt caching、日历热力图。
+- **Activity**：按日、按模型堆叠图，Tokens / Spend / Requests 切换，花费趋势、请求量、token breakdown、prompt caching、日历热力图。超过 90 天的趋势图自动汇总为连续 7 天的周区间；热力图和 Logs 仍保留逐日 / 逐条明细。
 - **筛选**：7d、30d、MTD、All；默认 GMT+8，可切换 UTC、洛杉矶、伦敦。
 - **明细**：Luna / Sol / Astra 及所有实际出现的其他模型；准确数值通过悬停或 CSV 导出查看。
 - **热力图**：至少展示最近一年作为上下文；所选范围外降低颜色强度，上方统计仅计算所选范围。
@@ -59,13 +59,15 @@ python3 server.py --sessions /absolute/path/to/sessions --cache /absolute/path/t
 
 价格文件是 `pricing.json`，美元 / 百万 token；修改后刷新页面即可生效，不需要重建缓存。
 
-| 模型 | Uncached input | Cached input | Output |
-|---|---:|---:|---:|
-| Luna | $0.20 | $0.02 | $1.20 |
-| Sol | $4.00 | $0.40 | $20.00 |
-| Astra | $10.00 | $1.00 | $50.00 |
+| 模型 | Uncached input | Cached input | Cache write | Output |
+|---|---:|---:|---:|---:|
+| GPT-5 / 5.1 | $1.25 | $0.125 | — | $10.00 |
+| GPT-5.2 / 5.3-Codex | $1.75 | $0.175 | — | $14.00 |
+| GPT-6 Luna | $0.10 | $0.01 | $0.125 | $0.50 |
+| GPT-6 Sol | $2.00 | $0.20 | $2.50 | $10.00 |
+| GPT-6 Astra | $10.00 | $1.00 | $12.50 | $50.00 |
 
-核对于 **2026-09-13**：[Luna 官方页面](https://developers.openai.com/api/docs/models/gpt-5.6-luna)、[Sol 官方页面](https://developers.openai.com/api/docs/models/gpt-5.6-sol)、[Astra 官方页面](https://developers.openai.com/api/docs/models/gpt-6-astra)。其他已配置模型的官方链接也在网站底部的“统计口径与价格依据”中。
+核对于 **2026-09-23**：[GPT-5](https://developers.openai.com/api/docs/models/gpt-5)、[GPT-5.1](https://developers.openai.com/api/docs/models/gpt-5.1)、[GPT-5.2](https://developers.openai.com/api/docs/models/gpt-5.2)、[GPT-5.3-Codex](https://developers.openai.com/api/docs/models/gpt-5.3-codex)、[GPT-6 Luna](https://developers.openai.com/api/docs/models/gpt-6-luna)、[GPT-6 Sol](https://developers.openai.com/api/docs/models/gpt-6-sol)、[GPT-6 Astra](https://developers.openai.com/api/docs/models/gpt-6-astra)。另已配置 GPT-5/5.1/5.2 的 Codex 变体，其中 5.1-Codex Mini 使用其独立单价。所有已配置模型的官方链接也在网站底部的“统计口径与价格依据”中。
 
 这是**当前标准基础单价的 API 等效估算，非实际付款金额**。不包含 >272K 长上下文加价、服务等级、工具调用、地区加价、历史价格变化。公开文档给出的长上下文定价和日志中的 session 概念不能简单等同，所以本项目选择明确的基础单价口径，而不声称精确还原 API 账单。
 
@@ -89,6 +91,7 @@ Cache writes 视为未缓存输入中的子集；未配置写入单价时使用 
 - 没写完的最后一行留到下次追加后处理。格式错误的用量 / 元数据行跳过并计数，文件读取错误在页面提示。
 - 普通追加式 rollout 是优化目标；“前面内容被修改并同时在末尾追加，但最后 512 字节边界不变”无法由轻量检查识别。此类人工改写后，请停止服务、删除项目 `.cache/` 再启动以完整重建。
 - 默认缓存存于项目 `.cache/usage.sqlite3`，只含时间、模型、用量、哈希和本地路径 / 扫描状态，不保存提示词、回答或工具输出。Summary / Activity 只接收聚合结果；Logs 按页接收请求用量和来源文件名 / 字节位置，不接收对话内容。
+- 同一时区、时间范围与价格设置的汇总结果会在服务进程内复用；日志新增、替换或删除，以及价格文件内容修改后会重新计算。长范围图表自动做周汇总，减少 Nivo 需要绘制的图形数量。
 - 不修改原始日志，不上传日志。价格链接只有用户主动点击时才访问外网。
 
 ## 文件结构
