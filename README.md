@@ -37,7 +37,7 @@ python3 server.py --sessions /absolute/path/to/sessions --cache /absolute/path/t
 - **Summary**：总 tokens、基础单价 API 等效、请求数、缓存命中率，按模型份额、日均 / 周均、活跃天数、最长连续使用天数。
 - **Logs**：访问 `/logs` 逐条查看精确请求时间、模型、input / cached / uncached / output / reasoning / total tokens、cache hit 与 6 位小数的 API 等效花费。支持模型筛选、25 / 50 / 100 条分页；点击请求时间展开费用拆分、来源日志文件名、字节位置和事件 ID。上方趋势图与时间、模型筛选一致。
 - **Activity**：按日、按模型堆叠图，Tokens / Spend / Requests 切换，花费趋势、请求量、token breakdown、prompt caching、日历热力图。超过 90 天的趋势图自动汇总为连续 7 天的周区间；热力图和 Logs 仍保留逐日 / 逐条明细。
-- **筛选**：7d、30d、MTD、All；默认 GMT+8，可切换 UTC、洛杉矶、伦敦。
+- **筛选**：7d、30d、90d、MTD、All、Custom range…（选择起止日期，包含两端）；默认 GMT+8，可切换 UTC、洛杉矶、伦敦。自定义日期写入页面地址，刷新或切换页面后仍保留。
 - **明细**：Luna / Sol / Astra 及所有实际出现的其他模型；准确数值通过悬停或 CSV 导出查看。
 - **热力图**：至少展示最近一年作为上下文；所选范围外降低颜色强度，上方统计仅计算所选范围。
 - **刷新**：右上角刷新会增量扫描。切换范围也会检查日志变化（5 秒内复用扫描结果）。页面不会在后台自动轮询。
@@ -51,7 +51,7 @@ python3 server.py --sessions /absolute/path/to/sessions --cache /absolute/path/t
 5. 跨文件相同时间戳、模型、累计计数与本次用量的事件会去重，处理常见的 fork 历史复制。此规则是日志级启发式；日志没有稳定的 API request ID 时，不能保证与服务端计费事件一一对应。
 6. 模型根据事件的显式模型或此前 `turn_context.model` 归属；`gpt-5.6` 映射到 Sol。`gpt-reserve` 汇总归入 Luna；`gpt-5.3-codex-spark` 汇总归入 GPT-5.3-Codex；`codex-auto-review` 在 2026-07-31 01:17:10（GMT+8）前汇总归入 5.4 Mini，之后归入 Luna。Logs 保留原始模型名并显示计价模型。未知模型保留原始名称，未发现模型归属的事件使用 `unknown`。
 7. **Requests 指去重后的用量事件数**，不是用户消息数、tool call 数或可核对的服务端账单请求数；未写入本地日志的用量无法恢复。
-8. 日界按选定时区计算。7d / 30d 包含今天；MTD 为本月至今；All 为首个有用量的日期至今天。日均含空白日，周均 = 日均 × 7。最长 streak 在所选范围内计算。
+8. 日界按选定时区计算。7d / 30d / 90d 包含今天；MTD 为本月至今；All 为首个有用量的日期至今天；Custom range 包含所选起止日期。日均含空白日，周均 = 日均 × 7。最长 streak 在所选范围内计算。
 9. 与前一时段比较时，使用紧邻所选范围之前、相同自然日天数的时段；今天可能尚未结束。All 不做前期比较。
 10. 当前仅读取传入的 sessions 目录；其他机器、其他账号、已移出此目录的 archived_sessions 不会自动合并。历史已删除日志不可能被恢复。
 

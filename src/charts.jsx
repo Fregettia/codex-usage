@@ -11,6 +11,13 @@ const display=(n,key)=>key==='cost'?'$'+Number(n).toFixed(4):Number(n).toLocaleS
 export function resetCharts(){roots.forEach(r=>r.unmount());roots=[];charts=[];}
 export function chartSlot(kind,props,height=260,extra=''){const id='nivo-'+charts.length;charts.push({id,kind,props});return `<div id="${id}" class="nivo-chart ${extra}" style="height:${height}px" role="img" aria-label="${kind} usage visualization"></div>`;}
 function Tip({title,items}){return <div style={theme.tooltip.container}><strong>{title}</strong>{items.map((x,i)=><div key={i} style={{display:'flex',gap:16,justifyContent:'space-between',marginTop:7}}><span><span style={{color:x.color}}>● </span>{x.label}</span><b>{x.value}</b></div>)}</div>}
+function barTooltipItems(series, row, metric, compactValues=false){
+ // Nivo omits zero-valued keys from a bar datum; absent series have no tooltip row.
+ return series.flatMap(s=>{
+  const amount=Number(row?.[s.label]);
+  return Number.isFinite(amount)&&amount>0?[{label:s.label,color:s.color,value:compactValues&&metric!=='cost'?compact(amount):display(amount,metric)}]:[];
+ });
+}
 function Chart({kind,props:p}){
  const common={theme,animate:false};
  if(kind==='calendar'){
@@ -32,6 +39,6 @@ function Chart({kind,props:p}){
  const dates=new Map(rows.map(d=>[d.date,d.through&&d.through!==d.date?`${d.date} – ${d.through}`:d.date]));
  const axes={axisBottom:{tickSize:0,tickPadding:12,tickValues:ticks,format:v=>v.slice(5).replace('-','/')},axisLeft:{tickSize:0,tickPadding:10,tickValues:4,format:n=>p.metric==='cost'?'$'+compact(n):compact(n)}};
  if(kind==='line'||kind==='spark')return <ResponsiveLine {...common} {...axes} data={series.map(s=>({id:s.label,color:s.color,data:rows.map(d=>({x:d.date,y:s.get(d)}))}))} colors={d=>d.color} margin={kind==='spark'?{top:3,right:2,bottom:3,left:2}:{top:15,right:20,bottom:35,left:60}} xScale={{type:'point'}} yScale={{type:'linear',min:0,max:'auto',stacked:false}} axisBottom={kind==='spark'?null:axes.axisBottom} axisLeft={kind==='spark'?null:axes.axisLeft} enableGridX={false} enableGridY={kind!=='spark'} enablePoints={false} lineWidth={kind==='spark'?1.8:2.3} curve="monotoneX" enableArea={kind==='spark'} areaOpacity={.08} enableSlices={kind==='spark'?false:'x'} isInteractive={kind!=='spark'} sliceTooltip={({slice})=><Tip title={dates.get(slice.points[0]?.data.x)||slice.points[0]?.data.x} items={slice.points.map(pt=>({label:pt.seriesId,color:pt.seriesColor,value:display(pt.data.y,p.metric)}))}/>}/>;
- return <ResponsiveBar {...common} {...axes} data={rows.map(d=>Object.fromEntries([['date',d.date],...series.map(s=>[s.label,s.get(d)])]))} keys={series.map(s=>s.label)} indexBy="date" margin={{top:15,right:15,bottom:35,left:60}} padding={.32} borderRadius={2} colors={({id})=>series.find(s=>s.label===id)?.color||'#8991a2'} enableLabel={false} enableGridY enableGridX={false} valueScale={{type:'linear',min:0,max:'auto'}} tooltip={({indexValue,data})=><Tip title={dates.get(indexValue)||indexValue} items={series.map(s=>({label:s.label,color:s.color,value:display(data[s.label],p.metric)}))}/>} role="img" ariaLabel="Usage stacked bar chart" isFocusable/>;
+ return <ResponsiveBar {...common} {...axes} data={rows.map(d=>Object.fromEntries([['date',d.date],...series.map(s=>[s.label,s.get(d)])]))} keys={series.map(s=>s.label)} indexBy="date" margin={{top:15,right:15,bottom:35,left:60}} padding={.32} borderRadius={2} colors={({id})=>series.find(s=>s.label===id)?.color||'#8991a2'} enableLabel={false} enableGridY enableGridX={false} valueScale={{type:'linear',min:0,max:'auto'}} tooltip={({indexValue,data})=><Tip title={dates.get(indexValue)||indexValue} items={barTooltipItems(series,data,p.metric,p.compactTooltip)}/>} role="img" ariaLabel="Usage stacked bar chart" isFocusable/>;
 }
 export function mountCharts(){charts.forEach(({id,kind,props})=>{const el=document.getElementById(id);if(el){const root=createRoot(el);roots.push(root);root.render(<Chart kind={kind} props={props}/>);}});}

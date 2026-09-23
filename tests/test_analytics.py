@@ -98,6 +98,35 @@ class AnalyticsTests(unittest.TestCase):
         self.assertAlmostEqual(r['totals']['cost'], (20*.2+80*.02+10*1.2)/1e6)
         self.assertEqual(self.report('7d','UTC')['daily'][-2]['requests'], 1)
 
+    def test_90_day_and_custom_ranges_include_only_selected_days(self):
+        self.write([context(),
+                    token(usage(), usage(), '2026-09-11T23:00:00Z'),
+                    token(usage(200,160,20,8), usage(), '2026-09-12T16:30:00Z')])
+        self.index.scan()
+        ninety = self.index.report('90d', 'Asia/Singapore', PRICING, NOW)
+        self.assertEqual(ninety['days'], 90)
+        self.assertEqual(ninety['start'], '2026-06-16')
+        self.assertEqual(ninety['totals']['requests'], 2)
+        custom = self.index.report('custom', 'Asia/Singapore', PRICING, NOW,
+                                   start_date='2026-09-12', end_date='2026-09-12')
+        self.assertEqual((custom['start'], custom['end'], custom['days']),
+                         ('2026-09-12', '2026-09-12', 1))
+        self.assertEqual(custom['totals']['requests'], 1)
+        self.assertEqual(custom['daily'][0]['date'], '2026-09-12')
+        logs = self.index.logs('custom', 'Asia/Singapore', PRICING, now=NOW,
+                               start_date='2026-09-12', end_date='2026-09-12')
+        self.assertEqual(logs['logs']['total'], 1)
+        self.assertEqual(logs['logs']['items'][0]['timestamp'], '2026-09-11T23:00:00+00:00')
+        with self.assertRaises(ValueError):
+            self.index.logs('custom', 'Asia/Singapore', PRICING, now=NOW,
+                            start_date='2026-09-12', end_date='2026-09-12',
+                            date_filter='2026-09-13')
+        for start, end in [('2026-09-13', '2026-09-12'), ('2026-09-12', '2026-09-14'),
+                           ('2026-09-31', '2026-10-01'), ('2026-9-12', '2026-09-12')]:
+            with self.subTest(start=start, end=end), self.assertRaises(ValueError):
+                self.index.report('custom', 'Asia/Singapore', PRICING, NOW,
+                                  start_date=start, end_date=end)
+
     def test_logs_pagination_filter_and_totals(self):
         events = [context()]
         for i in range(31):

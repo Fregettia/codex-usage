@@ -50,12 +50,15 @@ def main():
                             last_scan = time.monotonic()
                         pricing = json.loads((BASE/'pricing.json').read_text())
                         period, tz = params.get('range', ['mtd'])[0], params.get('tz', ['Asia/Singapore'])[0]
+                        start_date, end_date = params.get('from', [''])[0], params.get('to', [''])[0]
                         if url.path == '/api/logs':
                             report = index.logs(period, tz, pricing, int(params.get('page', ['1'])[0]),
                                                 int(params.get('limit', ['50'])[0]), params.get('model', [''])[0],
-                                                date_filter=params.get('date', [''])[0])
+                                                date_filter=params.get('date', [''])[0],
+                                                start_date=start_date, end_date=end_date)
                         else:
-                            report = index.report(period, tz, pricing)
+                            report = index.report(period, tz, pricing,
+                                                  start_date=start_date, end_date=end_date)
                     return self.send(200, json.dumps(report).encode())
                 except (ValueError, ZoneInfoNotFoundError) as exc:
                     return self.send(400, json.dumps({'error': str(exc)}).encode())

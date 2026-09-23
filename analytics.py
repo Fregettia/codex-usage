@@ -1,6 +1,7 @@
 """Local, incremental rollout usage index. Standard library only."""
 import hashlib
 import json
+import re
 import sqlite3
 import time
 from datetime import datetime, timedelta, timezone
@@ -167,16 +168,18 @@ class Index:
                         (path, offset, fingerprint, stamp, model, json.dumps(usage)))
 
     def logs(self, period, tz_name, pricing, page=1, limit=50, model='', now=None,
-             date_filter=''):
+             date_filter='', start_date='', end_date=''):
         if page < 1 or limit not in (25, 50, 100):
             raise ValueError('Invalid page or page size')
-        report = self.report(period, tz_name, pricing, now, model)
+        report = self.report(period, tz_name, pricing, now, model, start_date, end_date)
         tz = ZoneInfo(tz_name)
         if date_filter:
             try:
                 selected = datetime.strptime(date_filter, '%Y-%m-%d').date()
             except ValueError as exc:
                 raise ValueError('Invalid log date') from exc
+            if period == 'custom' and not (report['start'] <= selected.isoformat() <= report['end']):
+                raise ValueError('Log date must be within the custom range')
             start_day = selected
             end_day = selected + timedelta(days=1)
         else:
@@ -217,10 +220,23 @@ class Index:
                               available_models=[r[0] for r in self.db.execute('SELECT DISTINCT model FROM events ORDER BY model')])
         return report
 
-    def report(self, period, tz_name, pricing, now=None, model_filter=''):
+    def report(self, period, tz_name, pricing, now=None, model_filter='',
+               start_date='', end_date=''):
         tz = ZoneInfo(tz_name)
         today = (now or datetime.now(timezone.utc)).astimezone(tz).date()
-        cache_key = (period, tz_name, today, model_filter,
+        if period == 'custom':
+            if not re.fullmatch(r'\d{4}-\d{2}-\d{2}', start_date or '') or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', end_date or ''):
+                raise ValueError('Custom range requires dates in YYYY-MM-DD format')
+            try:
+                custom_start = datetime.strptime(start_date, '%Y-%m-%d').date()
+                custom_end = datetime.strptime(end_date, '%Y-%m-%d').date()
+            except ValueError as exc:
+                raise ValueError('Invalid custom date') from exc
+            if custom_start > custom_end:
+                raise ValueError('Custom range start must be on or before end')
+            if custom_end > today:
+                raise ValueError('Custom range cannot end after today')
+        cache_key = (period, tz_name, today, model_filter, start_date, end_date,
                      json.dumps(pricing, sort_keys=True))
         if cache_key in self.report_cache:
             return dict(self.report_cache[cache_key], scan=self.scan_info)
@@ -257,13 +273,18 @@ class Index:
             start = today-timedelta(days=6)
         elif period == '30d':
             start = today-timedelta(days=29)
+        elif period == '90d':
+            start = today-timedelta(days=89)
         elif period == 'mtd':
             start = today.replace(day=1)
         elif period == 'all':
             start = datetime.fromisoformat(first).date()
+        elif period == 'custom':
+            start = custom_start
         else:
             raise ValueError('Unknown time range')
-        days = (today-start).days+1
+        end = custom_end if period == 'custom' else today
+        days = (end-start).days+1
         totals, by_model, trend = empty(), {m: empty() for m in models}, []
         longest = streak = active = 0
         for i in range(days):
@@ -284,14 +305,14 @@ class Index:
             for u in daily.get(day, {}).values():
                 add(previous, u)
         calendar = []
-        calendar_start = datetime.fromisoformat(first).date().replace(month=1, day=1)
+        calendar_start = min(datetime.fromisoformat(first).date(), start).replace(month=1, day=1)
         for i in range((today-calendar_start).days+1):
             day = (calendar_start+timedelta(days=i)).isoformat()
             t = empty()
             for u in daily.get(day, {}).values():
                 add(t, u)
             calendar.append(dict(date=day, **t))
-        result = dict(range=period, timezone=tz_name, start=start.isoformat(), end=today.isoformat(),
+        result = dict(range=period, timezone=tz_name, start=start.isoformat(), end=end.isoformat(),
                     first_date=first, totals=totals, previous=previous if period != 'all' else None,
                     days=days, active_days=active, longest_streak=longest,
                     avg_day=totals['total_tokens']/days, avg_week=totals['total_tokens']/days*7,
